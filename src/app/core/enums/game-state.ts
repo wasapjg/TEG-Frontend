@@ -1,0 +1,8 @@
+// Game status enums
+export enum GameState {
+  WAITING_FOR_PLAYERS = 'WAITING_FOR_PLAYERS',
+  IN_PROGRESS = 'IN_PROGRESS',
+  PAUSED = 'PAUSED',
+  FINISHED = 'FINISHED',
+  CANCELLED = 'CANCELLED'
+}

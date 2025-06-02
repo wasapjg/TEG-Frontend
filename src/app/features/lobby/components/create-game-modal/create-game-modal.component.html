@@ -1,0 +1,62 @@
+<div class="modal-backdrop">
+  <div class="modal-content">
+
+    <!-- CÓDIGO DE PARTIDA -->
+    <h2>Código de la Partida: <span class="game-code">{{ gameCode }}</span></h2>
+
+
+    <!-- AVATAR / JUGADORES EN SALA -->
+    <div class="player-avatars">
+      <div *ngFor="let player of players" class="player-box">
+        {{ player.name }}
+      </div>
+    </div>
+
+    <!-- CONFIGURACIONES DE LA PARTIDA -->
+    <div class="settings">
+
+      <div class="setting-item">
+        <label>Máx. jugadores:</label>
+        <button (click)="decreaseMaxPlayers()">-</button>
+        <span>{{ maxPlayers }}</span>
+        <button (click)="increaseMaxPlayers()">+</button>
+      </div>
+
+      <div class="setting-item">
+        <label>Chat:</label>
+        <input type="checkbox" [(ngModel)]="chatEnabled">
+      </div>
+
+      <div class="setting-item">
+        <label for="botLevel">Nivel de bots:</label>
+        <select id="botLevel" [(ngModel)]="botLevel">
+          <option *ngFor="let level of botLevels" [ngValue]="level">{{ level }}</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <label>Reglas:</label>
+        <select [(ngModel)]="rules">
+          <option value="tem">TEM</option>
+          <option value="otra">Otra (más tarde)</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <label>Tiempo por turno:</label>
+        <button (click)="decreaseTurnTime()">-</button>
+        <span>{{ turnTime }} seg</span>
+        <button (click)="increaseTurnTime()">+</button>
+      </div>
+
+    </div>
+
+    <!-- BOTONES FINALES -->
+    <div class="modal-actions">
+      <button class="start-button" (click)="completeGameCreation()">Jugar</button>
+      <button class="exit-button" (click)="closeModal()">Salir</button>
+    </div>
+
+  </div>
+</div>
+
