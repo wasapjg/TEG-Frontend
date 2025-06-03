@@ -10,7 +10,7 @@ export interface GamePlayer {
   user: User;
   color: string;
   objective: Objective;
-  state: PlayerState;
+  status: PlayerState;
   conqueredTerritories: Territory[];
   availableTroops: number;
   cards: TerritoryCard[];

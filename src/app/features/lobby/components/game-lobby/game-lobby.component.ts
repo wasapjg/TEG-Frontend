@@ -1,70 +1,98 @@
-import { Component } from '@angular/core';
-import {LobbyService} from '../../services/lobby.service';
-import { GameModel } from '../../../../core/models/class/game-model';
-import {CreateGameModalComponent} from '../create-game-modal/create-game-modal.component';
-import {JoinGameModalComponent} from '../join-game-modal/join-game-modal.component';
-import {CommonModule} from '@angular/common';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { LobbyService, GameCreationDto, GameResponseDto } from '../../services/lobby.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-game-lobby',
-  standalone : true,
-  imports: [CommonModule, CreateGameModalComponent, JoinGameModalComponent],
+  standalone: true,
+  imports: [/* tus imports */],
   templateUrl: './game-lobby.component.html',
   styleUrl: './game-lobby.component.css'
 })
-export class GameLobbyComponent{
+export class GameLobbyComponent implements OnInit, OnDestroy {
+  
+  availableGames: GameResponseDto[] = [];
+  private subscription?: Subscription;
 
-// Propiedades mínimas para crear la partida
-  createdByUserId: number = 123; // poner el id real del usuario logueado
-  maxPlayers: number = 6;
-  turnTimeLimit: number = 2; // minutos
-  chatEnabled: boolean = true;
-  pactsAllowed: boolean = true;
+  constructor(
+    private lobbyService: LobbyService,
+    private authService: AuthService
+  ) {}
 
+  ngOnInit() {
+    this.loadAvailableGames();
+    this.lobbyService.startAvailableGamesPolling();
+    
+    this.subscription = this.lobbyService.availableGames$.subscribe(games => {
+      this.availableGames = games;
+    });
+  }
 
-  gameCodeCreated: string = ''; //variable para guardar el codigo de la partida que se puede llegar a crear
-  // se usará para mandarlo al otro componente(create-game-modal) y cargar el juego allá
+  ngOnDestroy() {
+    this.subscription?.unsubscribe();
+    this.lobbyService.stopPolling();
+  }
 
-  showModalCreateGame = false;
-  showModalJoinGame = false;
-
-  constructor(private lobbyService : LobbyService) {}
-
-  async openModalCreateGame(){
-    const gameInitialData = { //sería el GameCreationDto
-      CreatedByUserId: this.createdByUserId,
-      maxPlayers: this.maxPlayers,
-      turnTimeLimit: this.turnTimeLimit,
-      chatEnabled: this.chatEnabled,
-      pactsAllowed: this.pactsAllowed
+  createNewGame() {
+    const currentUser = this.authService.getCurrentUser();
+    
+    if (!currentUser) {
+      console.error('Usuario no autenticado');
+      return;
     }
 
-    ///creamos la partida con los minimos requisitos y abrimos el modal de configuracion de partida
-    this.lobbyService.createGame(gameInitialData).subscribe({
-      next: (gameResponse) => {
-        console.log('Partida creada:', gameResponse);
-        this.gameCodeCreated = gameResponse.gameCode
+    const gameInitialData: GameCreationDto = {
+      createdByUserId: currentUser.id,
+      maxPlayers: 6,
+      turnTimeLimit: 10,
+      chatEnabled: true,
+      pactsAllowed: false
+    };
 
-        //abrimos el modal de creacion de partida despues de obtener el codigo
-        this.showModalCreateGame = true;
+    this.lobbyService.createGame(gameInitialData).subscribe({
+      next: (gameResponse: GameResponseDto) => {
+        console.log('Juego creado exitosamente:', gameResponse);
+        // Aquí puedes abrir el modal o navegar al juego
       },
-      error: (err) => {
-        console.error('Error creando partida:', err);
+      error: (error) => {
+        console.error('Error al crear el juego:', error);
       }
     });
   }
 
+  joinGame(gameCode: string) {
+    const currentUser = this.authService.getCurrentUser();
+    
+    if (!currentUser) {
+      console.error('Usuario no autenticado');
+      return;
+    }
 
-  openModalJoinGame(){
-    //levantamos el modal para unirse a un juego
-    this.showModalJoinGame = true;
+    const joinData = {
+      userId: currentUser.id,
+      gameCode: gameCode
+    };
+
+    this.lobbyService.joinGame(joinData).subscribe({
+      next: (gameResponse: GameResponseDto) => {
+        console.log('Te uniste al juego:', gameResponse);
+        // Navegar al juego o actualizar UI
+      },
+      error: (error) => {
+        console.error('Error al unirse al juego:', error);
+      }
+    });
   }
 
-  closeModalCreateGame(){
-    this.showModalCreateGame = false;
+  private loadAvailableGames() {
+    this.lobbyService.getAvailableGames().subscribe({
+      next: (games) => {
+        this.availableGames = games;
+      },
+      error: (error) => {
+        console.error('Error al cargar juegos:', error);
+      }
+    });
   }
-  closeModalJoinGame(){
-    this.showModalJoinGame = false;
-  }
-
 }

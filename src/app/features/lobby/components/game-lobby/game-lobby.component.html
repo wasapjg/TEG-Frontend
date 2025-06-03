@@ -2,21 +2,21 @@
 <div class="game-lobby-container">
   <h1>TEG</h1>
 
-  <button (click)="openModalCreateGame()">Crear Partida</button>
-  <button (click)="openModalJoinGame()">Unirse a Partida</button>
+  <button (click)="createNewGame()">Crear Partida</button>
+  <button (click)="joinGame('fe2')">Unirse a Partida</button>
 
   <!-- Aquí después van a aparecer los modales -->
   <!-- Modal Crear Partida -->
-  <app-create-game-modal
+  <!-- <app-create-game-modal
     *ngIf="showModalCreateGame"
-    [gameCode]="gameCodeCreated"
-    (cerrar)="closeModalCreateGame()">
+    (cerrar)="closeModalCreateGame()"
+    (gameCreated)="onGameCreated($event)">
 
-  </app-create-game-modal>
+  </app-create-game-modal> -->
 
   <!-- Modal Unirse Partida -->
-  <app-join-game-modal
+  <!-- <app-join-game-modal
     *ngIf="showModalJoinGame"
     (cerrar)="closeModalJoinGame()">
-  </app-join-game-modal>
+  </app-join-game-modal> -->
 </div>

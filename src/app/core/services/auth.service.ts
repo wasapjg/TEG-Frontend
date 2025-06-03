@@ -7,11 +7,13 @@ export interface UserRegisterDto {
   username: string;
   email: string;
   password: string;
-  confirmPassword: string;
 }
 
 export interface UserLoginDto {
-  username: string;
+  identity: {
+    type: 'USERNAME'; 
+    username: string;
+  }
   password: string;
 }
 
@@ -23,7 +25,7 @@ export interface AuthResponseDto {
 }
 
 export interface UserResponseDto {
-  id: string;
+  id: number;
   username: string;
   email: string;
   gamesPlayed: number;
