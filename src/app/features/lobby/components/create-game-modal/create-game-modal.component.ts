@@ -1,20 +1,11 @@
-import { Component, OnDestroy, EventEmitter, Output, Input, OnInit } from '@angular/core';
+// src/app/features/lobby/components/create-game-modal/create-game-modal.component.ts (SIMPLIFICADO)
+import { Component, OnDestroy, EventEmitter, Output, Input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LobbyService, GameResponseDto, AddBotsDto, GameInitDto } from '../../services/lobby.service';
 import { BotLevel } from '../../../../core/enums/BotLevel';
 import { BotStrategy } from '../../../../core/enums/BotStrategy';
-import { FormsModule } from '@angular/forms';
-import { interval, Subscription } from 'rxjs';
-import Swal from 'sweetalert2';
-import { CommonModule } from '@angular/common';
-
-// Interfaz para jugadores en el modal
-interface PlayerInModal {
-  id: string;
-  username: string;
-  isBot: boolean;
-  color: string;
-  joinedAt: Date;
-}
+import { NotificationService } from '../../../../core/services/notification.service';
 
 @Component({
   selector: 'app-create-game-modal',
@@ -23,44 +14,37 @@ interface PlayerInModal {
   templateUrl: './create-game-modal.component.html',
   styleUrl: './create-game-modal.component.css'
 })
-export class CreateGameModalComponent implements OnDestroy, OnInit {
+export class CreateGameModalComponent {
   @Input() gameCode: string = '';
   @Output() cerrar = new EventEmitter<void>();
 
   // Configuraciones del juego
   maxPlayers = 6;
   chatEnabled = true;
-  turnTime = 60; // en segundos
-  rules = 'any';
+  turnTime = 60;
   botLevel: BotLevel = BotLevel.NOVICE;
   botLevels = Object.values(BotLevel);
   
-  // Lista de jugadores 
-  players: PlayerInModal[] = [];
+  // Lista de jugadores simple
+  players: any[] = [];
   
-  // Estado del componente
   isLoading = false;
-  private pollingSubscription?: Subscription;
 
-  constructor(private lobbyService: LobbyService) {}
+  constructor(
+    private lobbyService: LobbyService,
+    private notificationService: NotificationService
+  ) {}
 
-  ngOnInit() {
-    if (this.gameCode) {
-      this.startPolling();
-    }
-  }
-
-  ngOnDestroy() {
-    this.pollingSubscription?.unsubscribe();
-  }
-
+  /**
+   * Completar creación del juego
+   */
   completeGameCreation() {
     if (!this.gameCode) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'No hay un gameCode válido.'
-      });
+      this.notificationService.showNotification(
+        'error',
+        'Error',
+        'No hay código de juego válido'
+      );
       return;
     }
 
@@ -75,12 +59,9 @@ export class CreateGameModalComponent implements OnDestroy, OnInit {
     };
 
     this.lobbyService.initGame(initGameDto).subscribe({
-      next: (gameResponse: GameResponseDto) => { 
+      next: (gameResponse) => {
         console.log("Partida inicializada:", gameResponse);
-
-        // Convertir players del response 
-        this.players = this.convertPlayersToModal(gameResponse.players || []);
-        this.gameCode = gameResponse.gameCode; 
+        this.players = gameResponse.players || [];
 
         // Agregar bots si faltan jugadores
         const currentPlayersCount = gameResponse.players?.length || 0;
@@ -95,15 +76,18 @@ export class CreateGameModalComponent implements OnDestroy, OnInit {
       error: (err) => {
         this.isLoading = false;
         console.error('Error al iniciar el juego:', err);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Error al iniciar el juego: ' + (err.message || 'Error desconocido')
-        });
+        this.notificationService.showNotification(
+          'error',
+          'Error',
+          'Error al iniciar el juego'
+        );
       }
     });
   }
 
+  /**
+   * Agregar bots al juego
+   */
   private addBots(botsToAdd: number) {
     const strategies = Object.values(BotStrategy);
     const randomStrategy = strategies[Math.floor(Math.random() * strategies.length)];
@@ -116,49 +100,63 @@ export class CreateGameModalComponent implements OnDestroy, OnInit {
     };
 
     this.lobbyService.addBotsToGame(addBotsDto).subscribe({
-      next: (gameResponse: GameResponseDto) => { // ← Tipo correcto
+      next: (gameResponse) => {
         console.log('Bots añadidos correctamente');
-        this.players = this.convertPlayersToModal(gameResponse.players || []);
+        this.players = gameResponse.players || [];
         this.isLoading = false;
       },
       error: (err) => {
         this.isLoading = false;
         console.error('Error al añadir los bots:', err);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Error al añadir los bots: ' + (err.message || 'Error desconocido')
-        });
+        this.notificationService.showNotification(
+          'error',
+          'Error',
+          'Error al añadir bots'
+        );
       }
     });
   }
 
-  // Método para actualizar lista de players en tiempo real
-  startPolling() {
-    this.pollingSubscription = interval(5000).subscribe(() => {
-      this.lobbyService.getGameByCode(this.gameCode).subscribe({
-        next: (gameResponse: GameResponseDto) => { // ← Tipo correcto
-          this.players = this.convertPlayersToModal(gameResponse.players || []);
-        },
-        error: (err) => {
-          console.error('Error en polling:', err);
-        }
-      });
+  /**
+   * Iniciar la partida
+   */
+  startGame() {
+    if (this.players.length < 2) {
+      this.notificationService.showNotification(
+        'warning',
+        'Jugadores Insuficientes',
+        'Se necesitan al menos 2 jugadores para iniciar'
+      );
+      return;
+    }
+
+    this.isLoading = true;
+
+    this.lobbyService.startGame(this.gameCode).subscribe({
+      next: (gameResponse) => {
+        this.isLoading = false;
+        this.notificationService.showNotification(
+          'success',
+          '¡Partida Iniciada!',
+          'La partida ha comenzado'
+        );
+        this.closeModal();
+      },
+      error: (err) => {
+        this.isLoading = false;
+        console.error('Error al iniciar partida:', err);
+        this.notificationService.showNotification(
+          'error',
+          'Error',
+          'No se pudo iniciar la partida'
+        );
+      }
     });
   }
 
-  // Convertir players del response a nuestro formato simple
-  private convertPlayersToModal(players: any[]): PlayerInModal[] {
-    return players.map(player => ({
-      id: player.id || '',
-      username: player.username || player.displayName || 'Usuario',
-      isBot: player.isBot || false,
-      color: player.color || '#000000',
-      joinedAt: player.joinedAt ? new Date(player.joinedAt) : new Date()
-    }));
-  }
-
-  // Métodos para ajustar los parámetros de creación del juego
+  /**
+   * Ajustar configuraciones
+   */
   decreaseMaxPlayers() {
     if (this.maxPlayers > 2) this.maxPlayers--;
   }
@@ -168,7 +166,7 @@ export class CreateGameModalComponent implements OnDestroy, OnInit {
   }
 
   decreaseTurnTime() {
-    if (this.turnTime > 15) this.turnTime -= 5; // Tiempo en segundos
+    if (this.turnTime > 15) this.turnTime -= 5;
   }
 
   increaseTurnTime() {
@@ -176,43 +174,6 @@ export class CreateGameModalComponent implements OnDestroy, OnInit {
   }
 
   closeModal() {
-    this.pollingSubscription?.unsubscribe();
     this.cerrar.emit();
-  }
-
-  // Método para iniciar la partida 
-  startGame() {
-    if (this.players.length < 2) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Jugadores Insuficientes',
-        text: 'Se necesitan al menos 2 jugadores para iniciar la partida.'
-      });
-      return;
-    }
-
-    this.isLoading = true;
-
-    this.lobbyService.startGame(this.gameCode).subscribe({
-      next: (gameResponse: GameResponseDto) => {
-        this.isLoading = false;
-        Swal.fire({
-          icon: 'success',
-          title: '¡Partida Iniciada!',
-          text: 'La partida ha comenzado. ¡Buena suerte!'
-        });
-        
-        this.closeModal();
-      },
-      error: (err) => {
-        this.isLoading = false;
-        console.error('Error al iniciar partida:', err);
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo iniciar la partida: ' + (err.message || 'Error desconocido')
-        });
-      }
-    });
   }
 }

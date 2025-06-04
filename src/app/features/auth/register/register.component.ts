@@ -1,3 +1,4 @@
+// src/app/features/auth/register/register.component.ts (SUPER SIMPLE)
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,11 +14,11 @@ import { NotificationService } from '../../../core/services/notification.service
   styleUrl: './register.component.css'
 })
 export class RegisterComponent implements OnInit {
-  // Modelo del formulario
+
   registerData = {
     username: '',
     email: '',
-    password: ''
+    password: '',
   };
 
   isLoading = false;
@@ -29,16 +30,18 @@ export class RegisterComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Si ya está logueado, redirigir al lobby
+    // Si ya está logueado, ir al lobby
     if (this.authService.isAuthenticated()) {
       this.router.navigate(['/lobby']);
     }
   }
 
   onSubmit(form: any): void {
+
     if (form.valid) {
       this.isLoading = true;
-      
+
+      // Solo enviar lo que necesita el backend
       const registerDataToSend: UserRegisterDto = {
         username: this.registerData.username,
         email: this.registerData.email,
@@ -47,31 +50,38 @@ export class RegisterComponent implements OnInit {
 
       this.authService.register(registerDataToSend).subscribe({
         next: (response) => {
-          this.isLoading = false;
-          this.notificationService.showNotification(
-            'success',
-            '¡Cuenta Creada!',
-            `Bienvenido ${registerDataToSend.username}. Tu cuenta ha sido creada exitosamente.`
-          );
+          console.log('Register response:', response);
           
-          // Redirigir al lobby después del registro exitoso
-          this.router.navigate(['/lobby']);
+          if (response.success) {
+            // Guardar usuario y redirigir
+            // this.authService.saveUser(response.user);
+            
+            this.notificationService.showNotification(
+              'success',
+              'Registro exitoso',
+              `Bienvenido ${response.user.username}`
+            );
+            
+            this.router.navigate(['/lobby']);
+          } else {
+            this.notificationService.showNotification(
+              'error',
+              'Error',
+              'Registro fallido'
+            );
+          }
+          
+          this.isLoading = false;
         },
         error: (error) => {
+          console.error('Register error:', error);
           this.isLoading = false;
-          console.error('Error en registro:', error);
           
-          let errorMessage = 'Error desconocido al crear la cuenta';
+          let errorMessage = 'Error en el registro';
           if (error.status === 409) {
-            errorMessage = 'El usuario o email ya existe';
-          } else if (error.status === 400) {
-            errorMessage = 'Datos de registro inválidos';
-          } else if (error.status === 0) {
-            errorMessage = 'No se pudo conectar con el servidor';
-          } else if (error.error?.message) {
-            errorMessage = error.error.message;
+            errorMessage = 'El usuario ya existe';
           }
-
+          
           this.notificationService.showNotification(
             'error',
             'Error de Registro',
@@ -79,12 +89,6 @@ export class RegisterComponent implements OnInit {
           );
         }
       });
-    } else {
-      this.notificationService.showNotification(
-        'warning',
-        'Formulario Incompleto',
-        'Por favor completa todos los campos correctamente'
-      );
     }
   }
 
@@ -94,15 +98,9 @@ export class RegisterComponent implements OnInit {
       email: '',
       password: ''
     };
-    this.notificationService.showNotification(
-      'info',
-      'Formulario Limpiado',
-      'Se han borrado todos los datos del formulario'
-    );
   }
 
   goToLogin(): void {
     this.router.navigate(['/login']);
   }
-
 }

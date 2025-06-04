@@ -3,6 +3,11 @@ export const environment = {
   apiUrl: 'http://localhost:8080/api', // URL de tu backend Spring Boot
   version: '1.0.0',
   debugMode: true,
+  development: {
+    skipAuth: false,
+    showDebugInfo: true,
+    enableMockData: false
+  },
   features: {
     chat: true,
     bots: true

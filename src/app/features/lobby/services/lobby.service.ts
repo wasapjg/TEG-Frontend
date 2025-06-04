@@ -1,24 +1,36 @@
+// src/app/features/lobby/services/lobby.service.ts (SIMPLIFICADO)
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, switchMap, takeWhile, catchError, of } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { BotLevel } from '../../../core/enums/BotLevel';
 import { BotStrategy } from '../../../core/enums/BotStrategy';
 
-// DTOs para requests
+// DTOs básicos
 export interface GameCreationDto {
   createdByUserId: number;
   maxPlayers: number;
-  turnTimeLimit: number; // en minutos
+  turnTimeLimit: number;
   chatEnabled: boolean;
   pactsAllowed: boolean;
-  gameCode?: string; // opcional, se genera automáticamente
 }
 
 export interface GameJoinDto {
   userId: number;
   gameCode: string;
+}
+
+export interface GameResponseDto {
+  id: number;
+  gameCode: string;
+  createdByUsername: string;
+  status: string;
+  maxPlayers: number;
+  turnTimeLimit: number;
+  chatEnabled: boolean;
+  pactsAllowed: boolean;
+  players: any[];
 }
 
 export interface AddBotsDto {
@@ -36,59 +48,11 @@ export interface GameInitDto {
   pactsAllowed: boolean;
 }
 
-// DTO para responses del backend
-export interface GameResponseDto {
-  id: number;
-  gameCode: string;
-  createdByUsername: string;
-  status: string;
-  currentPhase?: string;
-  currentTurn?: number;
-  currentPlayerIndex?: number;
-  maxPlayers: number;
-  turnTimeLimit: number;
-  chatEnabled: boolean;
-  pactsAllowed: boolean;
-  createdAt: Date;
-  startedAt?: Date;
-  finishedAt?: Date;
-  players: PlayerResponseDto[];
-  currentPlayerName?: string;
-}
-
-// DTO para jugadores del backend
-export interface PlayerResponseDto {
-  id: string;
-  userId?: string;
-  username: string;
-  displayName: string;
-  isBot: boolean;
-  botLevel?: string;
-  status: string;
-  color: string;
-  seatOrder: number;
-  joinedAt: Date;
-  territoriesCount: number;
-  totalArmies: number;
-  cardsCount: number;
-  armiesToPlace: number;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class LobbyService {
   private readonly API_URL = `${environment.apiUrl}/games`;
-  
-  // Subject para mantener la lista de juegos disponibles
-  private availableGamesSubject = new BehaviorSubject<GameResponseDto[]>([]);
-  public availableGames$ = this.availableGamesSubject.asObservable();
-  
-  // Subject para el juego actual
-  private currentGameSubject = new BehaviorSubject<GameResponseDto | null>(null);
-  public currentGame$ = this.currentGameSubject.asObservable();
-  
-  private isPollingActive = false;
 
   constructor(
     private http: HttpClient,
@@ -96,140 +60,83 @@ export class LobbyService {
   ) {}
 
   /**
-   * Crear una nueva partida
+   * Obtener headers básicos (sin session compleja)
+   */
+  private getHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+  }
+
+  /**
+   * Crear nueva partida
    */
   createGame(gameData: GameCreationDto): Observable<GameResponseDto> {
-    const options = this.authService.getRequestOptions();
-    return this.http.post<GameResponseDto>(this.API_URL, gameData, options);
+    return this.http.post<GameResponseDto>(this.API_URL, gameData, { 
+      headers: this.getHeaders() 
+    });
   }
 
   /**
-   * Obtener lista de juegos disponibles
+   * Obtener juegos disponibles
    */
   getAvailableGames(): Observable<GameResponseDto[]> {
-    const options = this.authService.getRequestOptions();
-    return this.http.get<GameResponseDto[]>(`${this.API_URL}/available`, options);
+    return this.http.get<GameResponseDto[]>(`${this.API_URL}/available`, {
+      headers: this.getHeaders()
+    });
   }
 
   /**
-   * Obtener un juego por código
+   * Obtener juego por código
    */
   getGameByCode(gameCode: string): Observable<GameResponseDto> {
-    const options = this.authService.getRequestOptions();
-    return this.http.get<GameResponseDto>(`${this.API_URL}/code/${gameCode}`, options);
+    return this.http.get<GameResponseDto>(`${this.API_URL}/code/${gameCode}`, {
+      headers: this.getHeaders()
+    });
   }
 
   /**
-   * Unirse a una partida
+   * Unirse a partida
    */
   joinGame(joinData: GameJoinDto): Observable<GameResponseDto> {
-    const options = this.authService.getRequestOptions();
-    return this.http.post<GameResponseDto>(`${this.API_URL}/${joinData.gameCode}/join`, joinData, options);
+    return this.http.post<GameResponseDto>(`${this.API_URL}/${joinData.gameCode}/join`, joinData, {
+      headers: this.getHeaders()
+    });
   }
 
   /**
-   * Salir de una partida
-   */
-  leaveGame(gameCode: string): Observable<any> {
-    const options = this.authService.getRequestOptions();
-    return this.http.post(`${this.API_URL}/${gameCode}/leave`, {}, options);
-  }
-
-  /**
-   * Inicializar configuraciones del juego (antes de empezar)
+   * Inicializar juego
    */
   initGame(initData: GameInitDto): Observable<GameResponseDto> {
-    const options = this.authService.getRequestOptions();
-    return this.http.put<GameResponseDto>(`${this.API_URL}/${initData.gameCode}/init`, initData, options);
+    return this.http.put<GameResponseDto>(`${this.API_URL}/${initData.gameCode}/init`, initData, {
+      headers: this.getHeaders()
+    });
   }
 
   /**
-   * Agregar bots a la partida
+   * Agregar bots
    */
   addBotsToGame(addBotsData: AddBotsDto): Observable<GameResponseDto> {
-    const options = this.authService.getRequestOptions();
-    return this.http.post<GameResponseDto>(`${this.API_URL}/${addBotsData.gameCode}/add-bots`, addBotsData, options);
+    return this.http.post<GameResponseDto>(`${this.API_URL}/${addBotsData.gameCode}/add-bots`, addBotsData, {
+      headers: this.getHeaders()
+    });
   }
 
   /**
-   * Iniciar la partida (solo el host)
+   * Iniciar partida
    */
   startGame(gameCode: string): Observable<GameResponseDto> {
-    const options = this.authService.getRequestOptions();
-    return this.http.post<GameResponseDto>(`${this.API_URL}/${gameCode}/start`, {}, options);
-  }
-
-  /**
-   * Iniciar polling para actualizar la lista de juegos disponibles
-   */
-  startAvailableGamesPolling(): void {
-    if (this.isPollingActive) return;
-    
-    this.isPollingActive = true;
-    
-    interval(5000).pipe(
-      takeWhile(() => this.isPollingActive),
-      switchMap(() => this.getAvailableGames()),
-      catchError(error => {
-        console.error('Error en polling de juegos disponibles:', error);
-        return of([]);
-      })
-    ).subscribe(games => {
-      this.availableGamesSubject.next(games);
+    return this.http.post<GameResponseDto>(`${this.API_URL}/${gameCode}/start`, {}, {
+      headers: this.getHeaders()
     });
   }
 
   /**
-   * Iniciar polling para un juego específico
+   * Salir de partida
    */
-  startGamePolling(gameCode: string): void {
-    if (this.isPollingActive) return;
-    
-    this.isPollingActive = true;
-    
-    interval(2000).pipe(
-      takeWhile(() => this.isPollingActive),
-      switchMap(() => this.getGameByCode(gameCode)),
-      catchError(error => {
-        console.error('Error en polling del juego:', error);
-        return of(null);
-      })
-    ).subscribe(game => {
-      if (game) {
-        this.currentGameSubject.next(game);
-      }
+  leaveGame(gameCode: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/${gameCode}/leave`, {}, {
+      headers: this.getHeaders()
     });
-  }
-
-  /**
-   * Detener polling
-   */
-  stopPolling(): void {
-    this.isPollingActive = false;
-  }
-
-  /**
-   * Limpiar datos del servicio
-   */
-  clearData(): void {
-    this.availableGamesSubject.next([]);
-    this.currentGameSubject.next(null);
-    this.stopPolling();
-  }
-
-  /**
-   * Verificar si el usuario puede unirse a un juego
-   */
-  canJoinGame(game: GameResponseDto): boolean {
-    return game.status === 'WAITING_FOR_PLAYERS' && 
-           game.players.length < game.maxPlayers;
-  }
-
-  /**
-   * Verificar si el usuario es el host del juego
-   */
-  isGameHost(game: GameResponseDto): boolean {
-    const currentUser = this.authService.getCurrentUser();
-    return currentUser?.username === game.createdByUsername;
   }
 }

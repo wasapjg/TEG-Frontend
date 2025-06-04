@@ -1,22 +1,88 @@
+<!-- src/app/features/lobby/components/game-lobby/game-lobby.component.html (SIMPLIFICADO) -->
+<div class="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 p-8">
+  
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-8">
+    <div>
+      <h1 class="text-4xl font-bold text-white mb-2">T.E.G. Online</h1>
+      <p class="text-gray-300" *ngIf="currentUser">Bienvenido, {{ currentUser.username }}</p>
+    </div>
+    
+    <div class="flex space-x-4">
+      <button 
+        (click)="refreshGames()"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+        🔄 Refrescar
+      </button>
+      
+      <button 
+        (click)="logout()"
+        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md">
+        🚪 Salir
+      </button>
+    </div>
+  </div>
 
-<div class="game-lobby-container">
-  <h1>TEG</h1>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    
+    <!-- Panel Crear Partida -->
+    <div class="bg-white bg-opacity-10 backdrop-blur-lg rounded-lg p-6">
+      <h2 class="text-2xl font-bold text-white mb-4">Crear Nueva Partida</h2>
+      
+      <div class="space-y-4">
+        <p class="text-gray-300">Crea una nueva partida y invita a tus amigos</p>
+        
+        <button 
+          (click)="createNewGame()"
+          [disabled]="isLoading"
+          class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-md transition-all duration-200">
+          {{ isLoading ? 'Creando...' : '🎮 Crear Partida' }}
+        </button>
+      </div>
+    </div>
 
-  <button (click)="createNewGame()">Crear Partida</button>
-  <button (click)="joinGame('fe2')">Unirse a Partida</button>
+    <!-- Panel Unirse a Partida -->
+    <div class="bg-white bg-opacity-10 backdrop-blur-lg rounded-lg p-6">
+      <h2 class="text-2xl font-bold text-white mb-4">Partidas Disponibles</h2>
+      
+      <!-- Lista de juegos -->
+      <div class="space-y-3 max-h-96 overflow-y-auto">
+        
+        <!-- Mensaje si no hay juegos -->
+        <div *ngIf="availableGames.length === 0" class="text-center text-gray-300 py-8">
+          <p>No hay partidas disponibles</p>
+          <p class="text-sm">¡Sé el primero en crear una!</p>
+        </div>
+        
+        <!-- Lista de juegos disponibles -->
+        <div 
+          *ngFor="let game of availableGames" 
+          class="bg-white bg-opacity-20 rounded-lg p-4 hover:bg-opacity-30 transition-all duration-200">
+          
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-white font-semibold">{{ game.gameCode }}</h3>
+              <p class="text-gray-300 text-sm">Por: {{ game.createdByUsername }}</p>
+              <p class="text-gray-300 text-sm">
+                Jugadores: {{ game.players.length }}/{{ game.maxPlayers }}
+              </p>
+            </div>
+            
+            <button 
+              (click)="joinGame(game.gameCode)"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm">
+              🎯 Unirse
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <!-- Aquí después van a aparecer los modales -->
-  <!-- Modal Crear Partida -->
-  <!-- <app-create-game-modal
-    *ngIf="showModalCreateGame"
-    (cerrar)="closeModalCreateGame()"
-    (gameCreated)="onGameCreated($event)">
-
-  </app-create-game-modal> -->
-
-  <!-- Modal Unirse Partida -->
-  <!-- <app-join-game-modal
-    *ngIf="showModalJoinGame"
-    (cerrar)="closeModalJoinGame()">
-  </app-join-game-modal> -->
+  <!-- Info adicional -->
+  <div class="mt-8 text-center">
+    <p class="text-gray-400 text-sm">
+      TEG Online - Versión de prueba
+    </p>
+  </div>
 </div>
